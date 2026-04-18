@@ -101,6 +101,10 @@ To verify the system can differentiate between different tastes, we define three
 - `target_energy` — preferred energy level (proximity scoring)
 - `likes_acoustic` — boolean preference for acoustic sound (bonus/penalty on acousticness)
 
+### Terminal Output
+
+<a href="terminal-output.png" target="_blank"><img src='terminal-output.png' title='Terminal Output' width='' alt='Terminal Output' class='center-block' /></a>
+
 ---
 
 ## Getting Started

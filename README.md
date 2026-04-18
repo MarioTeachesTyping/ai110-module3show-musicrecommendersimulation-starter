@@ -11,7 +11,7 @@ Your goal is to:
 - Evaluate what your system gets right and wrong
 - Reflect on how this mirrors real world AI recommenders
 
-This project simulates a content-based music recommender. It scores a catalog of 10 songs against a user's taste profile using weighted feature matching (genre, mood, energy, valence, acousticness) and returns the top-k recommendations with explanations for each pick.
+This project simulates a content-based music recommender. It scores a catalog of 18 songs against a user's taste profile using weighted feature matching (genre, mood, energy, valence, acousticness) and returns the top-k recommendations with explanations for each pick.
 
 ---
 
@@ -34,13 +34,61 @@ We need two distinct rules to make this work:
 1. **Scoring Rule** (per song): Evaluates one song against the user profile and produces a numeric score with an explanation.
 2. **Ranking Rule** (for the catalog): Sorts all scored songs in descending order and returns the top-k results as the final recommendation list.
 
-Genre matching is weighted most heavily (it defines the broadest musical category), followed by mood, then numerical features that fine-tune the vibe.
+### Algorithm Recipe
+
+The scoring function computes a total score for each song as follows:
+
+| Feature         | Rule                                           | Weight |
+|-----------------|------------------------------------------------|--------|
+| **Genre**       | +2.0 if song genre == user's favorite genre    | 2.0    |
+| **Mood**        | +1.5 if song mood == user's favorite mood      | 1.5    |
+| **Energy**      | `1.0 × (1 - |target_energy - song.energy|)`    | 1.0    |
+| **Valence**     | `0.5 × song.valence` (mild bonus for positive) | 0.5    |
+| **Acousticness**| +0.5 if `likes_acoustic` and acousticness > 0.6, or if `!likes_acoustic` and acousticness < 0.4 | 0.5 |
+
+**Total score** = genre_points + mood_points + energy_proximity + valence_bonus + acoustic_bonus
+
+Genre matching is weighted most heavily (2.0) because it defines the broadest musical category. Mood is next (1.5) because two songs in the same genre can feel completely different. Energy proximity (1.0) fine-tunes intensity. Valence and acousticness are lighter signals (0.5 each) that nudge the ranking without dominating it.
+
+**Ranking Rule**: After scoring every song, sort descending by total score. Return the top-k songs along with their scores and a human-readable explanation of why each was picked.
+
+### Data Flow Diagram
+
+```mermaid
+flowchart TD
+    A[User Profile\ngenre, mood, energy, likes_acoustic] --> B[Load Song Catalog\nsongs.csv — 18 songs]
+    B --> C{For each song in catalog}
+    C --> D[Score: Genre Match?\n+2.0 if match]
+    D --> E[Score: Mood Match?\n+1.5 if match]
+    E --> F[Score: Energy Proximity\n+1.0 × 1 minus abs diff]
+    F --> G[Score: Valence Bonus\n+0.5 × valence]
+    G --> H[Score: Acoustic Fit?\n+0.5 if preference aligns]
+    H --> I[Total Score for this song]
+    I --> C
+    C -->|All songs scored| J[Sort songs by score descending]
+    J --> K[Return Top-K Recommendations\nwith scores and explanations]
+```
+
+### Sample User Profiles
+
+To verify the system can differentiate between different tastes, we define three test profiles:
+
+- **Intense Rock Fan**: `{genre: "rock", mood: "intense", energy: 0.9, likes_acoustic: False}` — should rank "Storm Runner" and "Shattered Glass" highest
+- **Chill Lofi Studier**: `{genre: "lofi", mood: "chill", energy: 0.35, likes_acoustic: True}` — should rank "Library Rain" and "Midnight Coding" highest
+- **Upbeat Pop Listener**: `{genre: "pop", mood: "happy", energy: 0.8, likes_acoustic: False}` — should rank "Sunrise City" and "Gym Hero" highest
+
+### Potential Biases
+
+- **Genre over-prioritization**: At weight 2.0, genre dominates the score. A song that perfectly matches mood, energy, and acousticness but is in the wrong genre will score lower than a genre-match with poor fit elsewhere. This mirrors a real filter bubble problem.
+- **Categorical rigidity**: An "indie pop" song won't match a "pop" preference despite being closely related. The system has no concept of genre similarity.
+- **Small catalog bias**: With only 18 songs, some genres have a single representative. The system can't distinguish between liking "hip-hop" as a genre and liking the one hip-hop song's specific attributes.
+- **No temporal or contextual awareness**: The system ignores time of day, recent listening history, or sequential flow — all things real recommenders account for.
 
 ### Features Used
 
-**`Song` attributes** (from `songs.csv`):
-- `genre` — categorical (pop, lofi, rock, ambient, jazz, synthwave, indie pop)
-- `mood` — categorical (happy, chill, intense, relaxed, moody, focused)
+**`Song` attributes** (from `songs.csv` — 18-song catalog):
+- `genre` — categorical (pop, lofi, rock, ambient, jazz, synthwave, indie pop, electronic, r&b, country, metal, classical, hip-hop, reggae)
+- `mood` — categorical (happy, chill, intense, relaxed, moody, focused, energetic, romantic, aggressive, peaceful, melancholic)
 - `energy` — float [0–1], intensity/excitement level
 - `valence` — float [0–1], musical positivity
 - `danceability` — float [0–1], rhythmic suitability for dancing

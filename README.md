@@ -56,7 +56,7 @@ Genre matching is weighted most heavily (2.0) because it defines the broadest mu
 
 ```mermaid
 flowchart TD
-    A[User Profile\ngenre, mood, energy, likes_acoustic] --> B[Load Song Catalog\nsongs.csv — 18 songs]
+    A[User Profile\ngenre, mood, energy, likes_acoustic] --> B[Load Song Catalog\nsongs.csv, 18 songs]
     B --> C{For each song in catalog}
     C --> D[Score: Genre Match?\n+2.0 if match]
     D --> E[Score: Mood Match?\n+1.5 if match]
@@ -73,33 +73,33 @@ flowchart TD
 
 To verify the system can differentiate between different tastes, we define three test profiles:
 
-- **Intense Rock Fan**: `{genre: "rock", mood: "intense", energy: 0.9, likes_acoustic: False}` — should rank "Storm Runner" and "Shattered Glass" highest
-- **Chill Lofi Studier**: `{genre: "lofi", mood: "chill", energy: 0.35, likes_acoustic: True}` — should rank "Library Rain" and "Midnight Coding" highest
-- **Upbeat Pop Listener**: `{genre: "pop", mood: "happy", energy: 0.8, likes_acoustic: False}` — should rank "Sunrise City" and "Gym Hero" highest
+- **Intense Rock Fan**: `{genre: "rock", mood: "intense", energy: 0.9, likes_acoustic: False}`; it should rank "Storm Runner" and "Shattered Glass" highest
+- **Chill Lofi Studier**: `{genre: "lofi", mood: "chill", energy: 0.35, likes_acoustic: True}`; it should rank "Library Rain" and "Midnight Coding" highest
+- **Upbeat Pop Listener**: `{genre: "pop", mood: "happy", energy: 0.8, likes_acoustic: False}`; it should rank "Sunrise City" and "Gym Hero" highest
 
 ### Potential Biases
 
 - **Genre over-prioritization**: At weight 2.0, genre dominates the score. A song that perfectly matches mood, energy, and acousticness but is in the wrong genre will score lower than a genre-match with poor fit elsewhere. This mirrors a real filter bubble problem.
 - **Categorical rigidity**: An "indie pop" song won't match a "pop" preference despite being closely related. The system has no concept of genre similarity.
 - **Small catalog bias**: With only 18 songs, some genres have a single representative. The system can't distinguish between liking "hip-hop" as a genre and liking the one hip-hop song's specific attributes.
-- **No temporal or contextual awareness**: The system ignores time of day, recent listening history, or sequential flow — all things real recommenders account for.
+- **No temporal or contextual awareness**: The system ignores time of day, recent listening history, or sequential flow; all things real recommenders account for.
 
 ### Features Used
 
-**`Song` attributes** (from `songs.csv` — 18-song catalog):
-- `genre` — categorical (pop, lofi, rock, ambient, jazz, synthwave, indie pop, electronic, r&b, country, metal, classical, hip-hop, reggae)
-- `mood` — categorical (happy, chill, intense, relaxed, moody, focused, energetic, romantic, aggressive, peaceful, melancholic)
-- `energy` — float [0–1], intensity/excitement level
-- `valence` — float [0–1], musical positivity
-- `danceability` — float [0–1], rhythmic suitability for dancing
-- `acousticness` — float [0–1], acoustic vs. electronic character
-- `tempo_bpm` — integer, beats per minute
+**`Song` attributes** (from `songs.csv`, 18-song catalog):
+- `genre`: categorical (pop, lofi, rock, ambient, jazz, synthwave, indie pop, electronic, r&b, country, metal, classical, hip-hop, reggae)
+- `mood`: categorical (happy, chill, intense, relaxed, moody, focused, energetic, romantic, aggressive, peaceful, melancholic)
+- `energy`: float [0–1], intensity/excitement level
+- `valence`: float [0–1], musical positivity
+- `danceability`: float [0–1], rhythmic suitability for dancing
+- `acousticness`: float [0–1], acoustic vs. electronic character
+- `tempo_bpm`: integer, beats per minute
 
 **`UserProfile` attributes**:
-- `favorite_genre` — preferred genre (exact-match scoring)
-- `favorite_mood` — preferred mood (exact-match scoring)
-- `target_energy` — preferred energy level (proximity scoring)
-- `likes_acoustic` — boolean preference for acoustic sound (bonus/penalty on acousticness)
+- `favorite_genre`: preferred genre (exact-match scoring)
+- `favorite_mood`: preferred mood (exact-match scoring)
+- `target_energy`: preferred energy level (proximity scoring)
+- `likes_acoustic`: boolean preference for acoustic sound (bonus/penalty on acousticness)
 
 ### Terminal Output
 
@@ -144,16 +144,16 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Experiments You Tried
 
-### Experiment 1 — Weight Shift (energy ×2, genre ×0.5)
+### Experiment 1: Weight Shift (energy ×2, genre ×0.5)
 
 We doubled the energy weight from 1.0 to 2.0 and halved genre from 2.0 to 1.0. Key observations:
 
-- **Rock Fan:** Gym Hero jumped from score 3.35 to 4.33 and Street Poet from 3.16 to 4.06 — mood-matched songs from non-matching genres gained the most.
+- **Rock Fan:** Gym Hero jumped from score 3.35 to 4.33 and Street Poet from 3.16 to 4.06; mood-matched songs from non-matching genres gained the most.
 - **Pop Listener:** Rooftop Lights (indie pop/happy) leapfrogged Gym Hero (pop/intense) because energy proximity now outweighed genre loyalty.
 - **Lofi Studier:** Spacewalk Thoughts (ambient/chill) climbed from #4 to #3, pushing into the top 3 because its energy was close to the target.
 - Overall the change made recommendations more musically diverse but less "on-brand" for users with strong genre preferences.
 
-### Experiment 2 — Mood Removal
+### Experiment 2: Mood Removal
 
 We commented out the mood matching check (+1.5 bonus). Key observations:
 
@@ -183,9 +183,19 @@ Read the full evaluation details:
 - [**Model Card**](model_card.md)
 - [**Detailed Reflection & Profile Comparisons**](reflection.md)
 
-The biggest lesson from this project is that weighted scoring systems are only as good as their weights and their data. Genre at 2.0 creates a strong filter bubble — it's the single most powerful signal, and if it fires, it almost guarantees a top-3 placement regardless of other dimensions. Reducing genre weight and increasing energy weight made the system more exploratory but less precise for users with strong genre loyalty.
+The biggest lesson from this project is that weighted scoring systems are only as good as their weights and their data. Genre at 2.0 creates a strong filter bubble, it's the single most powerful signal, and if it fires, it almost guarantees a top-3 placement regardless of other dimensions. Reducing genre weight and increasing energy weight made the system more exploratory but less precise for users with strong genre loyalty.
 
-Bias shows up in subtle ways. The dataset is 18 songs, and genres like classical, metal, and hip-hop have exactly one entry each — so the system can't distinguish between "liking a genre" and "liking one specific song." Mood matching uses exact strings, so "chill" and "relaxed" are treated as unrelated. And conflicting preferences (high energy + sad mood) are never flagged; the system just adds up scores, producing results that look reasonable on paper but feel wrong to a human listener. These are the same kinds of issues that real recommender systems face at scale, just easier to see in a small simulation.
+Bias shows up in subtle ways. The dataset is 18 songs, and genres like classical, metal, and hip-hop have exactly one entry each, so the system can't distinguish between "liking a genre" and "liking one specific song." Mood matching uses exact strings, so "chill" and "relaxed" are treated as unrelated. And conflicting preferences (high energy + sad mood) are never flagged; the system just adds up scores, producing results that look reasonable on paper but feel wrong to a human listener. These are the same kinds of issues that real recommender systems face at scale, just easier to see in a small simulation.
+
+### Personal Reflection
+
+**Biggest learning moment:** Watching the conflicting-preferences profile (high energy + melancholic) get served upbeat pop songs taught me that scoring systems optimize numbers, not experiences. The system had no way to know that "melancholic" and "high energy pop" are emotionally contradictory; it just added the points up. That single test case changed how I think about what "personalization" really means in AI systems.
+
+**How AI tools helped (and where I double-checked):** AI tools were great for scaffolding, generating the dataclass structure, writing CSV loading code, and brainstorming adversarial test profiles I wouldn't have thought of on my own. But I had to double-check the scoring logic manually. On more than one occasion, AI-suggested weight values produced rankings that looked correct in isolation but fell apart when I ran all six profiles side by side. The takeaway: AI accelerates the drafting phase, but you still need to run the code and inspect the output yourself.
+
+**What surprised me about simple algorithms:** Even with just five rules and 18 songs, the recommendations genuinely felt personalized. A rock fan gets rock, a lofi listener gets lofi, and the score explanations make each pick feel intentional. It's easy to see how users could develop trust in a system like this, even though it understands nothing about music; it just matches labels and numbers. That's both powerful and a little unsettling.
+
+**What I'd try next:** I would build a small web interface (Flask or Streamlit) so users can adjust preferences with sliders and see recommendations update in real time. I'd also experiment with fuzzy matching for genres and moods (so "indie pop" partially matches "pop") and explore using embedding-based similarity from a real audio API instead of hand-assigned categorical labels.
 
 
 ---

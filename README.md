@@ -144,38 +144,48 @@ You can add more tests in `tests/test_recommender.py`.
 
 ## Experiments You Tried
 
-Use this section to document the experiments you ran. For example:
+### Experiment 1 — Weight Shift (energy ×2, genre ×0.5)
 
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
+We doubled the energy weight from 1.0 to 2.0 and halved genre from 2.0 to 1.0. Key observations:
+
+- **Rock Fan:** Gym Hero jumped from score 3.35 to 4.33 and Street Poet from 3.16 to 4.06 — mood-matched songs from non-matching genres gained the most.
+- **Pop Listener:** Rooftop Lights (indie pop/happy) leapfrogged Gym Hero (pop/intense) because energy proximity now outweighed genre loyalty.
+- **Lofi Studier:** Spacewalk Thoughts (ambient/chill) climbed from #4 to #3, pushing into the top 3 because its energy was close to the target.
+- Overall the change made recommendations more musically diverse but less "on-brand" for users with strong genre preferences.
+
+### Experiment 2 — Mood Removal
+
+We commented out the mood matching check (+1.5 bonus). Key observations:
+
+- **Lofi Studier:** Focus Flow (lofi/focused) rose above Midnight Coding (lofi/chill) since they share a genre but Focus Flow's energy is slightly closer. Without mood, the tie-breaker shifted to energy.
+- **Rock Fan:** Gym Hero and Sunrise City became nearly tied (1.85 vs 1.84) since both lost their mood bonus and were differentiated only by energy/valence.
+- **Conflicted profile (D):** Frostbite Dawn dropped from #3 to completely off the top 5, since mood was the only reason it appeared.
+- Conclusion: mood is an important secondary differentiator, especially within the same genre. Without it, the system becomes blander.
 
 ---
 
 ## Limitations and Risks
 
-Summarize some limitations of your recommender.
+- **Genre over-prioritization:** At weight 2.0, genre dominates scoring. A perfect mood/energy/acoustic match in the wrong genre will always lose to a mediocre same-genre match. This creates a filter bubble.
+- **Tiny catalog (18 songs):** Genres like classical, metal, reggae, and hip-hop have exactly one representative. The system can't distinguish "I like classical music" from "I like Quiet Pages specifically."
+- **No semantic similarity for categories:** "indie pop" ≠ "pop" and "chill" ≠ "relaxed" in the scoring logic, even though real listeners treat them as nearly interchangeable.
+- **Conflicting preferences are silently ignored:** A user asking for high-energy melancholic pop gets served upbeat pop because the system adds dimensions independently without detecting contradictions.
+- **No lyrics, language, or temporal context:** The system knows nothing about song content beyond numeric features and categorical labels.
 
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
+See [model_card.md](model_card.md) for a deeper analysis.
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+Read the full evaluation details:
 
-[**Model Card**](model_card.md)
+- [**Model Card**](model_card.md)
+- [**Detailed Reflection & Profile Comparisons**](reflection.md)
 
-Write 1 to 2 paragraphs here about what you learned:
+The biggest lesson from this project is that weighted scoring systems are only as good as their weights and their data. Genre at 2.0 creates a strong filter bubble — it's the single most powerful signal, and if it fires, it almost guarantees a top-3 placement regardless of other dimensions. Reducing genre weight and increasing energy weight made the system more exploratory but less precise for users with strong genre loyalty.
 
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+Bias shows up in subtle ways. The dataset is 18 songs, and genres like classical, metal, and hip-hop have exactly one entry each — so the system can't distinguish between "liking a genre" and "liking one specific song." Mood matching uses exact strings, so "chill" and "relaxed" are treated as unrelated. And conflicting preferences (high energy + sad mood) are never flagged; the system just adds up scores, producing results that look reasonable on paper but feel wrong to a human listener. These are the same kinds of issues that real recommender systems face at scale, just easier to see in a small simulation.
 
 
 ---
